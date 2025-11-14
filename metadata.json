@@ -1,0 +1,5 @@
+{
+  "name": "Store Management Dashboard",
+  "description": "A modern, responsive, and dashboard-style user interface for a Store Management System. It allows store owners to manage products, inventory, customers, billing, and view sales analytics.",
+  "requestFramePermissions": []
+}
