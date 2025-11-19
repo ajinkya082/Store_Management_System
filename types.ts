@@ -1,5 +1,6 @@
+
 export interface Product {
-  id: number;
+  _id: string;
   name: string;
   category: string;
   price: number;
@@ -8,19 +9,22 @@ export interface Product {
 }
 
 export interface Customer {
-  id: number;
+  _id: string;
   name: string;
   email: string;
   phone: string;
   totalPurchases: number;
   lastPurchaseDate: string;
+  createdAt: string;
 }
 
 export interface Sale {
-  id: string;
+  _id: string;
+  id: string; // The human-readable ID like SALE-001
   customerName: string;
+  customerId?: string;
   products: {
-    productId: number;
+    productId: string;
     productName: string;
     quantity: number;
     price: number;
@@ -30,16 +34,20 @@ export interface Sale {
 }
 
 export interface User {
-  name: string;
+  _id: string;
+  name:string;
   email: string;
-  role: 'Admin' | 'Staff';
+  accessRole: 'owner' | 'customer';
+  systemRole?: 'Admin' | 'Staff';
   avatarUrl: string;
+  token?: string;
 }
 
 export interface CustomerOrder {
+    _id: string;
     id: string;
     date: string;
-    status: 'Delivered' | 'Processing' | 'Cancelled';
+    status: 'Delivered' | 'Processing' | 'Cancelled' | string; // Made flexible for potential future statuses
     total: number;
     items: number;
 }

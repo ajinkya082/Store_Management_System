@@ -1,47 +1,80 @@
+import React, { useState, useEffect } from 'react';
+import { User, Sale } from '../types';
+import { API_URL } from '../utils/api';
 
-import React from 'react';
-import { mockCustomerUser, mockCustomerOrders } from '../data/mockData';
+interface CustomerDashboardPageProps {
+    user: User | null;
+}
 
-const CustomerDashboardPage: React.FC = () => {
+const CustomerDashboardPage: React.FC<CustomerDashboardPageProps> = ({ user }) => {
+    const [orders, setOrders] = useState<Sale[]>([]);
+    const [loading, setLoading] = useState(true);
+    
+    useEffect(() => {
+        const fetchOrders = async () => {
+            if (!user?.token) return;
+            try {
+                setLoading(true);
+                const res = await fetch(`${API_URL}/sales/myorders`, {
+                    headers: {
+                        Authorization: `Bearer ${user.token}`,
+                    },
+                });
+                if (!res.ok) throw new Error("Failed to fetch orders");
+                const data = await res.json();
+                setOrders(data);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchOrders();
+    }, [user]);
+
+    if (!user) {
+        return <p>Loading...</p>
+    }
+
     return (
-        <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">
-                Welcome, {mockCustomerUser.name}!
-            </h1>
+        <div className="animate-fadeInUp">
+            <div
+                className="relative p-8 rounded-xl overflow-hidden mb-6 bg-gradient-to-r from-primary-600 to-primary-800"
+            >
+                <div className="relative">
+                    <h1 className="text-3xl font-bold text-white mb-2">Welcome back, {user.name}!</h1>
+                    <p className="text-primary-200">View your recent orders and manage your account.</p>
+                </div>
+            </div>
             
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-md">
-                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">Your Recent Orders</h3>
+            <div className="mt-8 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700/50">
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-4">Your Order History</h3>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead className="border-b dark:border-slate-700">
-                            <tr>
-                                <th className="py-2 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Order ID</th>
-                                <th className="py-2 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Date</th>
-                                <th className="py-2 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Status</th>
-                                <th className="py-2 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Items</th>
-                                <th className="py-2 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {mockCustomerOrders.map(order => (
-                                <tr key={order.id} className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                                    <td className="py-3 px-4 text-primary-DEFAULT font-medium">{order.id}</td>
-                                    <td className="py-3 px-4 text-gray-500 dark:text-gray-400">{order.date}</td>
-                                    <td className="py-3 px-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                            order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
-                                            order.status === 'Processing' ? 'bg-yellow-100 text-yellow-800' :
-                                            'bg-red-100 text-red-800'
-                                        }`}>
-                                            {order.status}
-                                        </span>
-                                    </td>
-                                    <td className="py-3 px-4 text-gray-800 dark:text-gray-200">{order.items}</td>
-                                    <td className="py-3 px-4 text-gray-800 dark:text-gray-200">${order.total.toFixed(2)}</td>
+                    {loading ? <p className="text-center py-4">Loading your orders...</p> : orders.length > 0 ? (
+                        <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+                            <thead className="bg-slate-50 dark:bg-slate-700/50">
+                                <tr>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Order ID</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Items</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                                {orders.map(order => (
+                                    <tr key={order._id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 dark:text-slate-100">{order.id}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">{new Date(order.date).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">${order.total.toFixed(2)}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{order.products.reduce((acc, p) => acc + p.quantity, 0)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p className="text-center py-8 text-gray-500 dark:text-gray-400">You have no orders yet.</p>
+                    )}
                 </div>
             </div>
         </div>

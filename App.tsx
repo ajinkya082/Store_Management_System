@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import DashboardLayout from './components/layout/DashboardLayout';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
@@ -17,6 +17,7 @@ import LobbyPage from './pages/LobbyPage';
 import CustomerDashboardLayout from './components/layout/CustomerDashboardLayout';
 import CustomerDashboardPage from './pages/CustomerDashboardPage';
 import { CustomerPage } from './components/layout/CustomerSidebar';
+import { User } from './types';
 
 export type Page = 'dashboard' | 'products' | 'customers' | 'sales' | 'inventory' | 'reports' | 'users' | 'settings';
 export type AuthPage = 'login' | 'signup' | 'forgot';
@@ -29,7 +30,27 @@ const App: React.FC = () => {
   const [authPage, setAuthPage] = useState<AuthPage>('login');
   const [ownerPage, setOwnerPage] = useState<Page>('dashboard');
   const [customerPage, setCustomerPage] = useState<CustomerPage>('dashboard');
+  const [user, setUser] = useState<User | null>(null);
   const { theme, toggleTheme } = useTheme();
+
+  useEffect(() => {
+    try {
+      const userInfo = localStorage.getItem('userInfo');
+      if (userInfo) {
+        const userData: User = JSON.parse(userInfo);
+        setUser(userData);
+        setRole(userData.accessRole);
+        if (userData.accessRole === 'owner') {
+          setView('owner_dashboard');
+        } else if (userData.accessRole === 'customer') {
+          setView('customer_dashboard');
+        }
+      }
+    } catch (error) {
+      console.error("Failed to parse user info from localStorage", error);
+      localStorage.removeItem('userInfo');
+    }
+  }, []);
 
   const handleSelectRole = useCallback((selectedRole: Role) => {
     setRole(selectedRole);
@@ -37,15 +58,30 @@ const App: React.FC = () => {
     setAuthPage('login');
   }, []);
 
-  const handleLogin = useCallback(() => {
-    if (role === 'owner') {
+  const handleLogin = useCallback((userData: User) => {
+    localStorage.setItem('userInfo', JSON.stringify(userData));
+    setUser(userData);
+    if (userData.accessRole === 'owner') {
       setView('owner_dashboard');
-    } else if (role === 'customer') {
+    } else if (userData.accessRole === 'customer') {
       setView('customer_dashboard');
     }
-  }, [role]);
+  }, []);
+
+  const handleUpdateUser = useCallback((updatedUserData: User) => {
+    const currentUserData = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    const newUserData = { 
+        ...currentUserData, 
+        ...updatedUserData,
+        token: updatedUserData.token || currentUserData.token
+    };
+    localStorage.setItem('userInfo', JSON.stringify(newUserData));
+    setUser(newUserData);
+  }, []);
 
   const handleLogout = useCallback(() => {
+    localStorage.removeItem('userInfo');
+    setUser(null);
     setView('lobby');
     setRole(null);
     setOwnerPage('dashboard');
@@ -59,24 +95,24 @@ const App: React.FC = () => {
 
   const renderOwnerPage = () => {
     switch (ownerPage) {
-      case 'dashboard': return <DashboardPage />;
-      case 'products': return <ProductsPage />;
-      case 'customers': return <CustomersPage />;
-      case 'sales': return <SalesPage />;
-      case 'inventory': return <InventoryPage />;
-      case 'reports': return <ReportsPage />;
-      case 'users': return <UsersPage />;
-      case 'settings': return <SettingsPage />;
-      default: return <DashboardPage />;
+      case 'dashboard': return <DashboardPage user={user} />;
+      case 'products': return <ProductsPage user={user} />;
+      case 'customers': return <CustomersPage user={user} />;
+      case 'sales': return <SalesPage user={user} />;
+      case 'inventory': return <InventoryPage user={user} />;
+      case 'reports': return <ReportsPage user={user} />;
+      case 'users': return <UsersPage user={user} />;
+      case 'settings': return <SettingsPage user={user} onUpdateUser={handleUpdateUser} />;
+      default: return <DashboardPage user={user}/>;
     }
   };
 
   const renderCustomerPage = () => {
     switch (customerPage) {
-        case 'dashboard': return <CustomerDashboardPage />;
-        case 'orders': return <CustomerDashboardPage />; // Placeholder, can be a new component
-        case 'settings': return <SettingsPage />; // Can reuse or create a customer-specific one
-        default: return <CustomerDashboardPage />;
+        case 'dashboard': return <CustomerDashboardPage user={user} />;
+        case 'orders': return <CustomerDashboardPage user={user} />; 
+        case 'settings': return <SettingsPage user={user} onUpdateUser={handleUpdateUser} />;
+        default: return <CustomerDashboardPage user={user} />;
     }
   };
 
@@ -87,13 +123,13 @@ const App: React.FC = () => {
     case 'auth':
       switch (authPage) {
         case 'login':
-          return <LoginPage onLogin={handleLogin} setAuthPage={setAuthPage} onBackToLobby={handleBackToLobby} />;
+          return <LoginPage onLogin={handleLogin} setAuthPage={setAuthPage} onBackToLobby={handleBackToLobby} role={role} />;
         case 'signup':
-          return <SignUpPage onLogin={handleLogin} setAuthPage={setAuthPage} />;
+          return <SignUpPage onLogin={handleLogin} setAuthPage={setAuthPage} role={role} />;
         case 'forgot':
           return <ForgotPasswordPage setAuthPage={setAuthPage} />;
         default:
-          return <LoginPage onLogin={handleLogin} setAuthPage={setAuthPage} onBackToLobby={handleBackToLobby} />;
+          return <LoginPage onLogin={handleLogin} setAuthPage={setAuthPage} onBackToLobby={handleBackToLobby} role={role} />;
       }
 
     case 'owner_dashboard':
@@ -104,6 +140,7 @@ const App: React.FC = () => {
           handleLogout={handleLogout}
           theme={theme}
           toggleTheme={toggleTheme}
+          user={user}
         >
           {renderOwnerPage()}
         </DashboardLayout>
@@ -117,6 +154,7 @@ const App: React.FC = () => {
                 handleLogout={handleLogout}
                 theme={theme}
                 toggleTheme={toggleTheme}
+                user={user}
             >
                 {renderCustomerPage()}
             </CustomerDashboardLayout>
